@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # lego-certbot
-# Glue script between Lego and Certbot, to allow Lego to
+# A compatibility script between Lego and Certbot, to allow Lego to
 # use Certbot authenticator plugins to perform DNS-01 challenges.
 # Designed to be run using the 'exec' provider in 'default' mode.
 
@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
@@ -24,7 +23,7 @@ if TYPE_CHECKING:
     from certbot.interfaces import DNSAuthenticator
 
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 def main() -> int:
@@ -37,7 +36,7 @@ def main() -> int:
     #   https://go-acme.github.io/lego/dns/exec/
     arg_parser = ArgumentParser(
         description=(
-            "A compatibility script between between Lego and Certbot, to allow Lego to "
+            "A compatibility script between Lego and Certbot, to allow Lego to "
             "use Certbot authenticator plugins to perform DNS-01 challenges.\n"
             "Designed to be run using the 'exec' provider in 'default' mode."
         ),
@@ -49,23 +48,32 @@ def main() -> int:
         help="ACME challenge command type",
     )
     arg_parser.add_argument(
-        "fqdn",
+        "name",
         type=str,
         nargs="?",
         default=None,
-        help="Domain name (including subdomain) to use for the ACME challenge",
+        help="ACME challenge TXT record name (e.g. _acme-challenge.example.com)",
     )
     arg_parser.add_argument(
-        "record",
+        "value",
         type=str,
         nargs="?",
         default=None,
-        help="TXT record challenge response value",
+        help="ACME challenge TXT record value",
+    )
+    arg_parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     args = arg_parser.parse_args()
 
     # Get the command to execute.
     command: str = args.command
+
+    # Root domain name under which the TXT record will be propagated.
+    domain = os.environ["LEGOCERTBOT_DOMAIN"]
 
     # Get the authenticator configuration from environment variables.
     # Authenticator type, as specified to Certbot.
@@ -132,18 +140,13 @@ def main() -> int:
         )
         sys.exit(0)
 
-    # Parse the ACME domain FQDN and challenge record value and generate
+    # Parse the ACME challenge record name and value and generate
     # parameters that the Certbot DNS authenticator will accept.
-    for arg in ("fqdn", "record"):
+    for arg in ("name", "value"):
         if not getattr(args, arg):
             raise ValueError(f"Argument '{arg}' is required for command '{command}'")
-    domain_match = re.match(r"^_acme-challenge\.(.*)\.$", args.fqdn)
-    if domain_match:
-        domain = domain_match.group(1)
-    else:
-        raise ValueError(f"Invalid ACME challenge FQDN '{args.fqdn}'")
-    validation_domain: str = args.fqdn.rstrip(".")
-    validation: str = args.record
+    validation_domain: str = args.name.rstrip(".")
+    validation: str = args.value
 
     # Read the credentials required to access the authenticator's API.
     authenticator._setup_credentials()
