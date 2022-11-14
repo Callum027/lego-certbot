@@ -8,18 +8,18 @@ Designed to be run using the [exec](https://go-acme.github.io/lego/dns/exec/) pr
 
 `lego-certbot` can be directly installed using `pip`.
 
+```
+$ python3 -m pip install "lego-certbot @ https://github.com/Callum027/lego-certbot/archive/refs/tags/v0.2.0.zip"
+```
+
 Available extras:
 
 * `metaname` - install the [certbot-dns-metaname](https://github.com/Callum027/certbot-dns-metaname/tree/stateless-cleanup) DNS authenticator
 
-```
-$ python3 -m pip install "lego-certbot @ https://github.com/Callum027/lego-certbot/archive/refs/tags/v0.1.0.zip"
-```
-
 The repository contains a fixed `requirements.txt` with known working package versions, and a virtual environment can be created based on that.
 
 ```
-$ git clone -b v0.1.0 https://github.com/Callum027/lego-certbot.git
+$ git clone -b v0.2.0 https://github.com/Callum027/lego-certbot.git
 $ cd lego-certbot
 $ python3 -m .venv
 $ source .venv/bin/activate
@@ -29,7 +29,7 @@ $ python3 -m pip install -r requirements.txt .
 Or, if you have Poetry installed, you can setup the virtual environment using `poetry install`.
 
 ```
-$ git clone -b v0.1.0 https://github.com/Callum027/lego-certbot.git
+$ git clone -b v0.2.0 https://github.com/Callum027/lego-certbot.git
 $ cd lego-certbot
 $ poetry install [--with=metaname]
 ```
@@ -42,7 +42,7 @@ Base configuration:
 
 * `EXEC_PATH` - Path to the script (e.g. `/usr/local/bin/lego-certbot`)
 
-`EXEC_MODE` must be undefined, or oteherwise not set to `RAW` mode.
+`EXEC_MODE` must be undefined, or otherwise not set to `RAW` mode.
 
 Additional configuration used by the script:
 
@@ -51,47 +51,51 @@ Additional configuration used by the script:
 * `EXEC_PROPAGATION_TIMEOUT` - Maximum waiting time for DNS propagation, in seconds. Used to set `propagation_seconds` in the Certbot authenticator plugin.\
   Default: (plugin default)
 
-As Lego's `exec` provider enforces a standard interface for the script itself, configuration cannot be done via the command line.
+As Lego's `exec` provider enforces a standard interface for the script itself, `lego-certbot` configuration cannot be done via the command line.
 
 ```
-$ poetry run lego-certbot --help
-usage: lego-certbot [-h] {present,cleanup,timeout} [fqdn] [record]
+$ lego-certbot --help
+usage: lego-certbot [-h] {present,cleanup,timeout} [name] [value]
 
-Glue script between Lego and Certbot, to allow Lego to use Certbot authenticator plugins to perform DNS-01 challenges.
+A compatibility script between Lego and Certbot, to allow Lego to use Certbot authenticator plugins to perform DNS-01 challenges.
 Designed to be run using the 'exec' provider in 'default' mode.
 
 positional arguments:
   {present,cleanup,timeout}
                         ACME challenge command type
-  fqdn                  Domain name (including subdomain) to use for the ACME challenge
-  record                TXT record challenge response value
+  name                  ACME challenge TXT record name (e.g. _acme-challenge.example.com)
+  value                 ACME challenge TXT record value
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
 ```
 
 Instead, `lego-certbot` itself is configured using the following environment variables.\
 It also shows an configuration for [the third party Metaname DNS authenticator](https://github.com/Callum027/certbot-dns-metaname/tree/stateless-cleanup) as an example of how to use them.
 
+* `LEGOCERTBOT_DOMAIN` - The root domain name of the (sub)domain for which the ACME challenge will take place.
+  Example: `example.com`
 * `LEGOCERTBOT_AUTHENTICATOR_TYPE` - The [DNS authenticator plugin](https://eff-certbot.readthedocs.io/en/stable/using.html#dns-plugins) to use.\
    Example: `dns-metaname`
 
-* `LEGOCERTBOT_AUTHENTICATOR_CONFIG` - Parameters to pass to the authenticator, in JSON format.
+* `LEGOCERTBOT_AUTHENTICATOR_CONFIG` - Parameters to pass to the authenticator, in JSON format.\
   Example: `{"endpoint":"https://metaname.net/api/1.1","credentials":"/etc/traefik/metaname.ini"}`
 
 ## Usage
 
 ### Lego
 
-A complete invocation of Lego would look something like this.
+A complete invocation of Lego to generate a wildcard certificate would look something like this.
 
 ```bash
 EXEC_PATH="/usr/local/bin/lego-certbot" \
 EXEC_POLLING_INTERVAL=5 \
 EXEC_PROPAGATION_TIMEOUT=120 \
+LEGOCERTBOT_DOMAIN="example.com" \
 LEGOCERTBOT_AUTHENTICATOR_TYPE="dns-metaname" \
 LEGOCERTBOT_AUTHENTICATOR_CONFIG='{"endpoint":"https://metaname.net/api/1.1","credentials":"/etc/traefik/metaname.ini"}' \
-lego --email you@example.com --dns exec --domains example.com run
+lego --email you@example.com --dns exec --domains example.com --domains *.example.com --dns.resolvers 49.50.242.204:53 --dns.resolvers 103.11.126.252:53 --dns.resolvers 103.11.126.244:53 run
 ```
 
 ### Traefik
@@ -162,3 +166,15 @@ http:
         servers:
           - url: "http://192.0.2.1:8080/"
 ```
+
+## Tips and Tricks
+
+### Lego CNAME traversal
+
+Since version 4.9.0, [recursive traversal of ACME challenge CNAME records](https://github.com/go-acme/lego/pull/1718) was enabled by default in Lego. Previously, this was enabled by defining the `LEGO_EXPERIMENTAL_CNAME_SUPPORT` environment variable.
+
+DNS configurations where the `_acme-challenge` subdomain resolves to a wildcard `CNAME` record for the root domain may not work properly with this change.
+
+To fix the problem, you could add a explicit `CNAME` record for the `_acme-challenge` subdomain to an `A` record subdomain designated for ACME challenges (e.g. `acme.example.com`). `TXT` records will then be created with this subdomain.
+
+To restore the old behaviour, define the `LEGO_DISABLE_CNAME_SUPPORT` environment variable.
