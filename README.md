@@ -9,7 +9,7 @@ Designed to be run using the [exec](https://go-acme.github.io/lego/dns/exec/) pr
 `lego-certbot` can be directly installed using `pip`.
 
 ```
-$ python3 -m pip install "lego-certbot @ https://github.com/Callum027/lego-certbot/archive/refs/tags/v0.2.0.zip"
+$ python3 -m pip install "lego-certbot @ https://github.com/Callum027/lego-certbot/archive/refs/tags/v0.3.0.zip"
 ```
 
 Available extras:
@@ -19,7 +19,7 @@ Available extras:
 The repository contains a fixed `requirements.txt` with known working package versions, and a virtual environment can be created based on that.
 
 ```
-$ git clone -b v0.2.0 https://github.com/Callum027/lego-certbot.git
+$ git clone -b v0.3.0 https://github.com/Callum027/lego-certbot.git
 $ cd lego-certbot
 $ python3 -m .venv
 $ source .venv/bin/activate
@@ -29,7 +29,7 @@ $ python3 -m pip install -r requirements.txt .
 Or, if you have Poetry installed, you can setup the virtual environment using `poetry install`.
 
 ```
-$ git clone -b v0.2.0 https://github.com/Callum027/lego-certbot.git
+$ git clone -b v0.3.0 https://github.com/Callum027/lego-certbot.git
 $ cd lego-certbot
 $ poetry install [--with=metaname]
 ```
