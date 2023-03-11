@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# lego-certbot
-# A compatibility script between Lego and Certbot, to allow Lego to
-# use Certbot authenticator plugins to perform DNS-01 challenges.
-# Designed to be run using the 'exec' provider in 'default' mode.
+
+"""
+A compatibility script between Lego and Certbot, to allow Lego to use
+Certbot authenticator plugins to perform DNS-01 challenges.
+
+Designed to be run using the 'exec' provider in 'default' mode.
+"""
 
 
 from __future__ import annotations
@@ -14,16 +17,22 @@ import os
 import sys
 
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
-from importlib.metadata import entry_points
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
+
+from certbot.configuration import NamespaceConfig
+from importlib_metadata import PackageNotFoundError, entry_points
+from importlib_metadata import version as package_version
 
 if TYPE_CHECKING:
     from typing import Type
 
-    from certbot.interfaces import DNSAuthenticator
+    from certbot.plugins.dns_common import DNSAuthenticator
 
 
-__version__ = "0.3.0"
+try:
+    __version__ = package_version("lego-certbot")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
 
 
 def main() -> int:
@@ -109,22 +118,20 @@ def main() -> int:
 
     # Read the Certbot plugin entry points to find the authenticator's entry,
     # and import the class directly.
-    # Note: importlib.metadata was a provisional library from
-    #       Python 3.8 until Python 3.10, and the original
-    #       entrypoint querying method was deprecated from 3.10 onwards.
-    if sys.version_info >= (3, 10):
-        (authenticator_ep,) = entry_points(
-            group="certbot.plugins",
-            name=authenticator_module_name,
-        )
-        authenticator_class: Type[DNSAuthenticator] = authenticator_ep.load()
-    else:
-        authenticator_class = [
-            ep for ep in entry_points()["certbot.plugins"] if ep.name == authenticator_module_name
-        ][0].load()
+    # Note: importlib.metadata was a provisional library from Python 3.8 until Python 3.10,
+    #       and the original entrypoint querying method was deprecated from 3.10 onwards.
+    #       Until Python 3.8 and 3.9 are EOL, use the backport importlib-metadata library.
+    (authenticator_ep,) = entry_points(
+        group="certbot.plugins",
+        name=authenticator_module_name,
+    )
+    authenticator_class: Type[DNSAuthenticator] = authenticator_ep.load()
 
     # Create an authenticator object to operate against.
-    authenticator = authenticator_class(authenticator_config, authenticator_config_prefix)
+    authenticator = authenticator_class(
+        cast(NamespaceConfig, authenticator_config),
+        authenticator_config_prefix,
+    )
 
     # For the 'timeout' command, return the configured timeout and
     # poll interval as a JSON object.
