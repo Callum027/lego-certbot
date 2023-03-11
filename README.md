@@ -2,36 +2,32 @@
 
 A compatibility script between [Lego](https://go-acme.github.io/lego) and [Certbot](https://certbot.eff.org), to allow Lego to use Certbot authenticator plugins to perform `DNS-01` challenges.
 
-Designed to be run using the [exec](https://go-acme.github.io/lego/dns/exec/) provider in `default` mode.
+Designed to be run using the [`exec`](https://go-acme.github.io/lego/dns/exec) provider in `default` mode.
 
-## Installing
+## Installation
 
-`lego-certbot` can be directly installed using `pip`.
-
-```
-$ python3 -m pip install "lego-certbot @ https://github.com/Callum027/lego-certbot/archive/refs/tags/v0.3.0.zip"
-```
-
-Available extras:
-
-* `metaname` - install the [certbot-dns-metaname](https://github.com/Callum027/certbot-dns-metaname/tree/stateless-cleanup) DNS authenticator
-
-The repository contains a fixed `requirements.txt` with known working package versions, and a virtual environment can be created based on that.
+The latest version of `lego-certbot` can be directly installed using `pip`.
 
 ```
-$ git clone -b v0.3.0 https://github.com/Callum027/lego-certbot.git
+$ python3 -m pip install lego-certbot
+```
+
+If you'd prefer to clone the `lego-certbot` repository directly, you can install it as a local package in a virtual environment.
+
+```
+$ git clone https://github.com/Callum027/lego-certbot.git
 $ cd lego-certbot
-$ python3 -m .venv
+$ python3 -m venv .venv
 $ source .venv/bin/activate
 $ python3 -m pip install -r requirements.txt .
 ```
 
-Or, if you have Poetry installed, you can setup the virtual environment using `poetry install`.
+`lego-certbot` uses Poetry, so it is recommended to setup a development environment using `poetry install`.
 
 ```
-$ git clone -b v0.3.0 https://github.com/Callum027/lego-certbot.git
+$ git clone https://github.com/Callum027/lego-certbot.git
 $ cd lego-certbot
-$ poetry install [--with=metaname]
+$ poetry install [--with=dev]
 ```
 
 ## Configuration
@@ -71,18 +67,18 @@ optional arguments:
   -v, --version         show program's version number and exit
 ```
 
-Instead, `lego-certbot` itself is configured using the following environment variables.\
-It also shows an configuration for [the third party Metaname DNS authenticator](https://github.com/Callum027/certbot-dns-metaname/tree/stateless-cleanup) as an example of how to use them.
+Instead, `lego-certbot` itself is configured using the following environment variables:
 
-* `LEGOCERTBOT_DOMAIN` - The root domain name of the (sub)domain for which the ACME challenge will take place.
+* `LEGOCERTBOT_DOMAIN` - The root domain name of the (sub)domain for which the ACME challenge will take place.\
   Example: `example.com`
 * `LEGOCERTBOT_AUTHENTICATOR_TYPE` - The [DNS authenticator plugin](https://eff-certbot.readthedocs.io/en/stable/using.html#dns-plugins) to use.\
    Example: `dns-metaname`
-
 * `LEGOCERTBOT_AUTHENTICATOR_CONFIG` - Parameters to pass to the authenticator, in JSON format.\
   Example: `{"endpoint":"https://metaname.net/api/1.1","credentials":"/etc/traefik/metaname.ini"}`
 
 ## Usage
+
+Below are some examples of how to integrate `lego-certbot` into your Lego workflow, using [the Metaname DNS authenticator](https://github.com/Callum027/certbot-dns-metaname) as the Certbot authenticator.
 
 ### Lego
 
@@ -141,7 +137,7 @@ certificatesResolvers:
           - "103.11.126.244:53"
       # During development, uncomment the following line to use the Let's Encrypt staging server.
       # Necessary to avoid hitting the rate limits on the production servers.
-      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
 ```
 
 [Dynamic configuration](https://doc.traefik.io/traefik/getting-started/configuration-overview/#the-dynamic-configuration) (`file` provider):
